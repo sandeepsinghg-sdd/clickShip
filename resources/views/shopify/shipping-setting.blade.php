@@ -33,10 +33,30 @@
 
     <br>
 
+    <hr>
+
+    <div class="container mt-5">
+        <h2>List of custom shippings</h2>
+        <table class="table table-bordered" id="users-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Shipping Name</th>
+                    <th>Sipping Price</th>
+                    <th>Created At</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    <hr>
+
+    <h2>Embed scripts form laravel to shopify</h2>
     <!-- Add buttons to inject or remove the script -->
     <button id="injectScriptButton">Inject Script</button>
     <button id="removeScriptButton">Remove Script</button>
-
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             let form = document.querySelector("form");
@@ -107,6 +127,21 @@
                     }
                 })
                 .catch(error => console.error("Error:", error));
+            });
+        });
+
+        $(document).ready(function () {
+            $('#users-table').DataTable({
+                processing: true,
+                serverSide: true,
+                ajax: "{{ url('/shopify/shipping/table') }}",
+                columns: [
+                    { data: 'id', name: 'id' },
+                    { data: 'shipping_name', name: 'shipping_name' },
+                    { data: 'shipping_price', name: 'shipping_price' },
+                    { data: 'created_at', name: 'created_at' },
+                    { data: 'action', name: 'action', orderable: false, searchable: false }
+                ]
             });
         });
     </script>

@@ -136,4 +136,111 @@ class ShopifyController extends Controller
    public function removeScript(Request $request){
     
    }
+
+
+   public function createOrder(Request $request){
+   
+
+   
+    $shopData = DB::table('shopify_apps')->first();
+    $shop = $shopData->shop;
+    $accessToken = $shopData->access_token;
+    
+    // Prepare order data
+     // ✅ Validate incoming request
+     $validated = $request->validate([
+        'customer_info.first_name' => 'required|string',
+        'customer_info.last_name' => 'required|string',
+        'customer_info.address' => 'required|string',
+        'customer_info.apartment' => 'nullable|string',
+        'customer_info.city' => 'required|string',
+        'customer_info.postal_code' => 'required|string',
+        'customer_info.country' => 'required|string',
+        'customer_info.region' => 'required|string',
+        'shipping_method' => 'required|string',
+        'shipping_cost' => 'required|numeric',
+        'products' => 'required|array|min:1',
+        'products.*.variant_id' => 'required|integer',
+        'products.*.quantity' => 'required|integer|min:1',
+    ]);
+
+    // ✅ Extract customer info
+    $customerInfo = $validated['customer_info'];
+
+    // ✅ Extract shipping details
+    $shippingMethod = $validated['shipping_method'];
+    $shippingCost = $validated['shipping_cost'];
+
+    // ✅ Extract and format product line items dynamically
+    $lineItems = array_map(function ($item) {
+        return [
+            "variant_id" => $item['variant_id'],
+            "quantity" => $item['quantity'],
+        ];
+    }, $validated['products']);
+
+    // ✅ Prepare Shopify order data
+    $orderData = [
+        "order" => [
+            "email" => "customer@example.com", // Replace with actual email if available
+            "line_items" => $lineItems,
+            "shipping_address" => [
+                "first_name" => $customerInfo['first_name'],
+                "last_name" => $customerInfo['last_name'],
+                "address1" => $customerInfo['address'],
+                "address2" => $customerInfo['apartment'] ?? "", // Optional
+                "city" => $customerInfo['city'],
+                "province" => $customerInfo['region'],
+                "zip" => $customerInfo['postal_code'],
+                "country" => $customerInfo['country'],
+            ],
+            "shipping_lines" => [
+                [
+                    "title" => $shippingMethod,
+                    "price" => $shippingCost,
+                    "code" => strtoupper(str_replace(' ', '_', $shippingMethod)), // Convert method to a valid code
+                ]
+            ],
+            "financial_status" => "paid", // Shopify requires this to mark as paid
+        ]
+    ];
+
+    // Create order in Shopify
+    $response = Http::withHeaders([
+        "X-Shopify-Access-Token" => $accessToken,
+    ])->post("https://$shop/admin/api/2024-01/orders.json", $orderData);
+
+    $data = $response->json();
+
+    if ($response->successful()) {
+        $orderId = $data["order"]["id"];
+
+        // ✅ Fetch the order details to get `order_status_url`
+        $orderResponse = Http::withHeaders([
+            "X-Shopify-Access-Token" => $accessToken,
+        ])->get("https://$shop/admin/api/2024-01/orders/$orderId.json");
+
+        $orderData = $orderResponse->json();
+
+        if (isset($orderData["order"]["order_status_url"])) {
+            $thankYouUrl = $orderData["order"]["order_status_url"]; // ✅ Correct thank you page URL
+
+            return response()->json([
+                'success' => true,
+                'redirect_url' => $thankYouUrl
+            ])->header('Access-Control-Allow-Origin', '*') // Allow all origins
+            ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE, PUT')
+            ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization');
+
+            // return response()->json($data, 200)
+            // ->header('Access-Control-Allow-Origin', '*') // Allow all origins
+            // ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE, PUT')
+            // ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization');
+        }
+    }
+
+    return response()->json(["error" => "Order creation failed"], 400) ->header('Access-Control-Allow-Origin', '*') // Allow all origins
+    ->header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE, PUT')
+    ->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Accept, Authorization');;
+   }
 }

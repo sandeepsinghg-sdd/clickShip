@@ -12,6 +12,6 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        'create-draft-order',  // Add your route here
+        'create-draft-order','shopify/*'  // Add your route here
     ];
 }

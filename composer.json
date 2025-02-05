@@ -11,7 +11,8 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "ohmybrew/basic-shopify-api": "^11.0",
-        "shopify/shopify-api": "^5.9"
+        "shopify/shopify-api": "^5.9",
+        "yajra/laravel-datatables-oracle": "^10.11"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
